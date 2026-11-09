@@ -1,0 +1,10 @@
+{
+ "devices": {
+  "mac-arquivo": {
+   "updatedAt": "2026-11-09T15:31:51.176Z",
+   "done": {"en1": 3, "it1": 2},
+   "days": {"2026-11-09": {"en": {"lessons": 4, "xp": 440, "ok": 44, "total": 56}, "it": {"lessons": 2, "xp": 240, "ok": 24, "total": 25}}}
+  }
+ },
+ "updatedAt": "2026-11-09T21:35:00.000Z"
+}
