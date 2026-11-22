@@ -752,16 +752,41 @@ function textBox(enable,ph){
 }
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let rec=null, micTries=0;
-const CONTR={"i'm":"i am","you're":"you are","we're":"we are","they're":"they are","it's":"it is","that's":"that is","what's":"what is","let's":"let us","i'll":"i will","you'll":"you will","we'll":"we will","i'd":"i would","i've":"i have","we've":"we have","don't":"do not","didn't":"did not","doesn't":"does not","can't":"cannot","won't":"will not","isn't":"is not","wasn't":"was not","aren't":"are not"};
-function wordsOf(x){ let t=plain(x); if(L&&L.lang==="en"){ t=t.split(" ").map(w=>CONTR[w]||w).join(" ").replace(/'/g,""); } else t=t.replace(/'/g," "); return t.replace(/-/g," ").split(" ").filter(Boolean); }
+const CONTR={"i'm":"i am","you're":"you are","we're":"we are","they're":"they are","it's":"it is","that's":"that is","what's":"what is","let's":"let us","i'll":"i will","you'll":"you will","we'll":"we will","they'll":"they will","he'll":"he will","she'll":"she will","it'll":"it will","i'd":"i would","you'd":"you would","we'd":"we would","they'd":"they would","i've":"i have","we've":"we have","you've":"you have","they've":"they have","he's":"he is","she's":"she is","there's":"there is","here's":"here is","who's":"who is","don't":"do not","didn't":"did not","doesn't":"does not","can't":"cannot","won't":"will not","isn't":"is not","wasn't":"was not","aren't":"are not","weren't":"were not","haven't":"have not","hasn't":"has not","couldn't":"could not","shouldn't":"should not","wouldn't":"would not","gonna":"going to","wanna":"want to","ok":"okay"};
+const HOMO={"two":"to","too":"to","four":"for","their":"there","write":"right","no":"know","here":"hear","buy":"by","bye":"by","won":"one","eight":"ate","its":"it","whole":"hole","hour":"our","weather":"whether","week":"weak","due":"do","new":"knew","cannot":"can not"};
+const EN_N=["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen"], EN_T=["","","twenty","thirty","forty","fifty","sixty","seventy","eighty","ninety"];
+const IT_N=["zero","uno","due","tre","quattro","cinque","sei","sette","otto","nove","dieci","undici","dodici","tredici","quattordici","quindici","sedici","diciassette","diciotto","diciannove"], IT_T=["","","venti","trenta","quaranta","cinquanta","sessanta","settanta","ottanta","novanta"];
+function numEn(n){ if(n<20) return EN_N[n]; if(n<100) return EN_T[Math.floor(n/10)]+(n%10?" "+EN_N[n%10]:""); if(n<1000) return EN_N[Math.floor(n/100)]+" hundred"+(n%100?" "+numEn(n%100):""); if(n<1000000) return numEn(Math.floor(n/1000))+" thousand"+(n%1000?" "+numEn(n%1000):""); return String(n); }
+function numIt(n){ if(n<20) return IT_N[n]; if(n<100){ let t=IT_T[Math.floor(n/10)], u=n%10; if(u===1||u===8) t=t.slice(0,-1); return t+(u?(u===3?"tré":IT_N[u]):""); } if(n<1000){ const c=Math.floor(n/100); return (c>1?IT_N[c]:"")+"cento"+(n%100?numIt(n%100):""); } if(n<1000000){ const m=Math.floor(n/1000); return (m>1?numIt(m)+"mila":"mille")+(n%1000?numIt(n%1000):""); } return String(n); }
+function wordsOf(x){
+  const en=!L||L.lang!=="it";
+  let t=String(x).toLowerCase().replace(/[’`´]/g,"'").replace(/(\d)[,.](\d{3})\b/g,"$1$2").replace(/\$\s?(\d+)/g,"$1 dollars").replace(/€\s?(\d+)/g,"$1 euro").replace(/(\d+)\s?€/g,"$1 euro").replace(/(\d+)\s?%/g,en?"$1 percent":"$1 per cento").replace(/(\d+)(st|nd|rd|th)\b/g,"$1");
+  t=t.replace(/\d+/g,d=>" "+(en?numEn(+d):numIt(+d))+" ");
+  t=plain(t);
+  if(en){ t=t.split(" ").map(w=>CONTR[w]||w).join(" ").replace(/'s\b/g,"").replace(/'/g,""); }
+  else t=t.replace(/'/g," ");
+  let w=t.replace(/-/g," ").split(" ").filter(Boolean);
+  if(en) w=w.join(" ").split(" ").map(v=>HOMO[v]||v).join(" ").split(" ");
+  return w.filter(Boolean);
+}
+const LIGHT=new Set(["a","an","the","to","of","in","on","at","and","is","am","are","it","for","by","be","as","do","so","or","il","lo","la","le","gli","i","un","una","uno","di","da","a","e","in","per","che","del","della","al","alla"]);
+const stem=w=>w.length>4?w.replace(/(ing|ed|es|s|i|e|a|o)$/,""):w;
 function grade(target,said){
   const a=wordsOf(target), b=wordsOf(said);
+  const close=(x,y)=>{ if(x===y) return true; if(x.length>=4&&stem(x)===stem(y)) return true; const d=lev(x,y); return (x.length>=4&&d<=1)||(x.length>=7&&d<=2); };
   const dp=Array.from({length:a.length+1},()=>Array(b.length+1).fill(0));
-  const close=(x,y)=>x===y||(x.length>3&&lev(x,y)<=1);
   for(let i=a.length-1;i>=0;i--)for(let j=b.length-1;j>=0;j--)dp[i][j]=close(a[i],b[j])?dp[i+1][j+1]+1:Math.max(dp[i+1][j],dp[i][j+1]);
   const hit=new Set(); let i=0,j=0;
   while(i<a.length&&j<b.length){ if(close(a[i],b[j])){hit.add(i);i++;j++;} else if(dp[i+1][j]>=dp[i][j+1]) i++; else j++; }
-  return {score:a.length?hit.size/a.length:0, missed:a.filter((w,k)=>!hit.has(k))};
+  let tot=0, got=0; a.forEach((w,k)=>{ const wt=LIGHT.has(w)?0.3:1; tot+=wt; if(hit.has(k)) got+=wt; });
+  return {score:tot?got/tot:0, missed:a.filter((w,k)=>!hit.has(k)&&!LIGHT.has(w))};
+}
+function micOverride(){
+  if(document.getElementById("micOk")) return;
+  const box=document.querySelector(".micbox"); if(!box) return;
+  const b=document.createElement("button"); b.className="vtest"; b.id="micOk"; b.textContent="Falei certo, o microfone errou";
+  b.onclick=()=>{ if(L.checked) return; if(rec){ try{rec.abort();}catch(e){} rec=null; } micTries=0; L.micResult=null; L.answer="__ok"; check(); };
+  box.after(b);
 }
 function micFallback(){
   if(document.getElementById("selfFb")) return;
@@ -776,21 +801,21 @@ function listenFor(target){
   const btn=document.getElementById("micBtn"), heard=document.getElementById("heard");
   if(rec){ try{rec.stop();}catch(e){} return; }
   try{ player.pause(); }catch(e){}
-  rec=new SR(); rec.lang=L.lang==="en"?"en-US":"it-IT"; rec.interimResults=true; rec.maxAlternatives=3; rec.continuous=false;
-  let best="", finalAlts=[];
+  rec=new SR(); rec.lang=L.lang==="en"?"en-US":"it-IT"; rec.interimResults=true; rec.maxAlternatives=5; rec.continuous=false;
+  let best="", finalAlts=[], allAlts=[];
   btn.classList.add("on"); heard.textContent="Ouvindo…";
-  rec.onresult=e=>{ const r=e.results[e.results.length-1]; best=Array.from(e.results).map(x=>x[0].transcript).join(" "); heard.textContent=best; if(r.isFinal){ finalAlts=Array.from(r).map(x=>x.transcript); } };
-  rec.onerror=e=>{ if(e.error==="service-not-allowed"||e.error==="not-allowed"){ micFallback(); } heard.textContent = e.error==="not-allowed"||e.error==="service-not-allowed" ? (/iPhone|iPad/.test(navigator.userAgent)?"O iPhone bloqueou o microfone. Vá em Ajustes > Safari > Microfone e escolha Permitir, ou avalie você mesmo abaixo.":"O navegador bloqueou o microfone. Clique no cadeado ao lado do endereço e permita o microfone.") : e.error==="no-speech" ? "Não ouvi nada. Toque e fale de novo." : e.error==="network" ? "O reconhecimento de voz precisa de internet." : "Não consegui ouvir. Tente de novo."; };
+  rec.onresult=e=>{ const r=e.results[e.results.length-1]; best=Array.from(e.results).map(x=>x[0].transcript).join(" "); heard.textContent=best; if(r.isFinal){ finalAlts=Array.from(r).map(x=>x.transcript); } allAlts=allAlts.concat(Array.from(r).map(x=>x.transcript)); };
+  rec.onerror=e=>{ if(e.error==="service-not-allowed"||e.error==="not-allowed"){ micFallback(); } heard.textContent = e.error==="not-allowed"||e.error==="service-not-allowed" ? (/iPhone|iPad/.test(navigator.userAgent)?"O iPhone bloqueou o microfone. Vá em Ajustes > Safari > Microfone e escolha Permitir, ou avalie você mesmo abaixo.":"O navegador bloqueou o microfone. Clique no cadeado ao lado do endereço e permita o microfone.") : e.error==="no-speech" ? (micOverride(),"Não ouvi nada. Toque e fale de novo, mais perto do microfone.") : e.error==="network" ? "O reconhecimento de voz precisa de internet." : "Não consegui ouvir. Tente de novo."; };
   rec.onend=()=>{
     btn.classList.remove("on"); rec=null;
     if(!best) return;
-    const cands=[best].concat(finalAlts); let g=null;
+    const cands=[best].concat(finalAlts,allAlts); let g=null;
     cands.forEach(c=>{const x=grade(target,c); if(!g||x.score>g.score) g=x;});
     micTries++;
-    const ok=g.score>=0.8;
+    const ok=g.score>=0.7;
     L.micResult={ok,score:g.score,missed:g.missed,said:best};
     if(ok||micTries>=3){ L.answer=ok?"__ok":"__no"; micTries=0; check(); }
-    else heard.textContent=`"${best}" — faltou: ${g.missed.join(", ")}. Tente de novo (${micTries}/3).`;
+    else { heard.textContent=`Entendi: "${best}"`+(g.missed.length?` — faltou: ${g.missed.join(", ")}`:"")+`. Tente de novo (${micTries}/3) ou confirme abaixo.`; micOverride(); }
   };
   try{ rec.start(); }catch(e){ btn.classList.remove("on"); rec=null; }
 }
@@ -942,58 +967,84 @@ document.getElementById("podStart").onclick=e=>startTimer("pod",900,"podT",e.cur
 document.getElementById("podDone").onclick=()=>{ if(timers.pod){clearInterval(timers.pod.iv); timers.pod=null;} dayRec(lang).listen=(dayRec(lang).listen||0)+15; document.getElementById("podT").textContent="Feito ✓"; persist(); };
 
 let LS=null;
+/* inglês: cada diálogo em 2 partes curtas (4 falas) com 2 perguntas logo depois; cut = segundo onde termina a 4ª fala */
+const LSPLIT={
+ len1:{cut:16.87,a:[0,1],b:[2,3]},
+ len2:{cut:21.00,a:[0,1],b:[2,3]},
+ len3:{cut:19.35,a:[1,2],b:[["O que a campanha extra trouxe?",["Cerca de duzentos novos clientes","Um prêmio de marketing","Uma queda nas vendas"],0],3]},
+ len4:{cut:17.22,a:[0,1],b:[2,3]},
+ len5:{cut:18.31,a:[0,1],b:[2,3]},
+ len6:{cut:15.61,a:[["Como é o modelo de trabalho da vaga?",["Híbrido, três dias no escritório","Totalmente remoto","Presencial no Texas"],1],0],b:[1,2]}
+};
+function listenParts(p){
+  const sp=LSPLIT[p.id]; const pick=x=>typeof x==="number"?p.q[x]:x;
+  if(!sp) return [{from:0,to:null,lines:p.lines,q:p.q}];
+  return [{from:0,to:sp.cut,lines:p.lines.slice(0,4),q:sp.a.map(pick)},{from:sp.cut,to:null,lines:p.lines.slice(4),q:sp.b.map(pick)}];
+}
+function stopRange(){ player.ontimeupdate=null; player.onended=null; }
+function playRange(from,to,rate,onDone){
+  try{
+    stopRange(); player.pause(); const src=LAUDIO[LS.p.id]; if(player.src!==src) player.src=src;
+    let done=false; const fin=()=>{ if(done) return; done=true; stopRange(); if(onDone) onDone(); };
+    const go=()=>{ try{ player.currentTime=from; }catch(e){} player.playbackRate=rate; player.play().catch(()=>{}); };
+    if(player.readyState>=1) go(); else player.addEventListener("loadedmetadata",go,{once:true});
+    player.ontimeupdate=()=>{ if(to!=null&&player.currentTime>=to){ player.pause(); fin(); } };
+    player.onended=fin; LS.plays++;
+  }catch(e){}
+}
 function startListening(){
   const p=LISTEN[lang][dayIndex()%LISTEN[lang].length];
-  LS={p,lang,step:"audio",qi:0,ok:0,plays:0,checked:false,ans:null};
+  const parts=listenParts(p); LS={p,lang,parts,pi:0,step:"audio",qi:0,ok:0,nq:parts.reduce((n,x)=>n+x.q.length,0),done:0,plays:0,checked:false,ans:null};
   L={finished:false,lang,listening:true,total:5,answered:0,hearts:5}; 
   document.getElementById("lesson").hidden=false; document.body.style.overflow="hidden";
   document.getElementById("hearts").textContent="";
   renderListen();
 }
-function playListen(slow){ try{ player.pause(); player.src=LAUDIO[LS.p.id]; player.currentTime=0; player.playbackRate=slow?0.8:1; player.play().catch(()=>{}); LS.plays++; }catch(e){} }
+function playListen(slow,auto){ const pt=LS.parts[LS.pi]; const me=LS; playRange(pt.from,pt.to,slow?0.8:1, auto?()=>{ if(LS===me&&LS.step==="audio") setTimeout(()=>{ if(LS===me&&LS.step==="audio") listenNext(); },500); }:null); }
+function playAll(){ playRange(0,null,1,null); }
 function renderListen(){
   const q=document.getElementById("q"); q.className="q"; q.innerHTML="";
-  const total=LS.p.q.length+1;
-  document.getElementById("lbar").style.width=((LS.step==="audio"?0:LS.step==="end"?total:LS.qi+1)/total*100)+"%";
+  document.getElementById("lbar").style.width=((LS.step==="end"?1:LS.done/LS.nq))*100+"%";
+  const part=LS.parts[LS.pi], multi=LS.parts.length>1;
   const h=document.createElement("h2"); q.appendChild(h);
   if(LS.step==="audio"){
-    h.textContent="Listening: "+LS.p.title;
+    h.textContent="Listening: "+LS.p.title+(multi?` · parte ${LS.pi+1} de ${LS.parts.length}`:"");
     const w=document.createElement("div"); w.className="say";
     w.innerHTML=`<button class="play" aria-label="Ouvir"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg></button><button class="play slow" aria-label="Ouvir devagar">LENTO</button>`;
     const [a,b]=w.querySelectorAll("button"); a.onclick=()=>playListen(false); b.onclick=()=>playListen(true);
     q.appendChild(w);
-    const p=document.createElement("p"); p.style.color="var(--muted)"; p.textContent="Ouça o diálogo duas vezes, sem ler nada. Depois responda 4 perguntas. O texto aparece no final."; q.appendChild(p);
-    setFoot("","", "Ir para as perguntas", true); playListen(false);
+    const p=document.createElement("p"); p.style.color="var(--muted)"; p.textContent=multi?`Ouça sem ler. Quando o áudio acabar, as ${part.q.length} perguntas aparecem na hora. O texto aparece no final.`:"Ouça o diálogo sem ler nada. Depois responda 4 perguntas. O texto aparece no final."; q.appendChild(p);
+    setFoot("","", "Ir para as perguntas", true); playListen(false,true);
   } else if(LS.step==="q"){
-    const [txt,opts]=LS.p.q[LS.qi]; h.textContent=txt; LS.ans=null; LS.checked=false;
+    const [txt,opts]=part.q[LS.qi]; h.textContent=txt; LS.ans=null; LS.checked=false;
     const w=document.createElement("div"); w.className="say";
-    w.innerHTML=`<button class="play slow" aria-label="Ouvir de novo">OUVIR</button>`; w.querySelector("button").onclick=()=>playListen(false); q.appendChild(w);
+    w.innerHTML=`<button class="play slow" aria-label="Ouvir de novo">OUVIR</button><button class="play slow" aria-label="Ouvir devagar">LENTO</button>`; const [r1,r2]=w.querySelectorAll("button"); r1.onclick=()=>playListen(false); r2.onclick=()=>playListen(true); q.appendChild(w);
     q.appendChild(optList(opts,v=>{ LS.ans=opts.indexOf(v); document.getElementById("go").disabled=false; }));
     setFoot("","","Verificar",false);
   } else {
     h.textContent="Listening concluído";
-    const sc=document.createElement("p"); sc.textContent=`Você acertou ${LS.ok} de ${LS.p.q.length}. Leia o texto e ouça mais uma vez acompanhando.`; q.appendChild(sc);
+    const sc=document.createElement("p"); sc.textContent=`Você acertou ${LS.ok} de ${LS.nq}. Leia o texto e ouça mais uma vez acompanhando.`; q.appendChild(sc);
     const s=document.createElement("div"); s.className="script"; LS.p.lines.forEach(l=>{ const p=document.createElement("p"); const i=l.indexOf(":"); p.innerHTML="<b></b> "; p.querySelector("b").textContent=l.slice(0,i+1); p.append(l.slice(i+1)); s.appendChild(p); }); q.appendChild(s);
-    const again=document.createElement("button"); again.className="vtest"; again.textContent="Ouvir lendo o texto"; again.onclick=()=>playListen(false); q.appendChild(again);
+    const again=document.createElement("button"); again.className="vtest"; again.textContent="Ouvir lendo o texto"; again.onclick=()=>playAll(); q.appendChild(again);
     setFoot("","","Voltar ao início",true);
   }
 }
 function listenNext(){
-  if(LS.step==="audio"){ LS.step="q"; LS.qi=0; renderListen(); return; }
+  if(LS.step==="audio"){ stopRange(); try{player.pause();}catch(e){} LS.step="q"; LS.qi=0; renderListen(); return; }
   if(LS.step==="q"){
     if(!LS.checked){
-      const right=LS.p.q[LS.qi][2]; const ok=LS.ans===right; LS.checked=true; if(ok) LS.ok++;
+      const cur=LS.parts[LS.pi].q[LS.qi]; const right=cur[2]; const ok=LS.ans===right; LS.checked=true; LS.done++; if(ok) LS.ok++;
       setFoot(ok?"good":"bad", `<b>${ok?"Correto!":"Resposta correta:"}</b><span></span>`, "Continuar", true);
-      document.querySelector("#fb span").textContent=ok?"":LS.p.q[LS.qi][1][right];
+      document.querySelector("#fb span").textContent=ok?"":cur[1][right];
       return;
     }
-    LS.qi++; if(LS.qi>=LS.p.q.length){ LS.step="end"; const r=dayRec(LS.lang); r.listen=(r.listen||0)+5; r.listenOk=(r.listenOk||0)+LS.ok; r.listenTotal=(r.listenTotal||0)+LS.p.q.length; persist(); }
+    LS.qi++; if(LS.qi>=LS.parts[LS.pi].q.length){ if(LS.pi+1<LS.parts.length){ LS.pi++; LS.qi=0; LS.step="audio"; } else { LS.step="end"; const r=dayRec(LS.lang); r.listen=(r.listen||0)+5; r.listenOk=(r.listenOk||0)+LS.ok; r.listenTotal=(r.listenTotal||0)+LS.nq; persist(); } }
     renderListen(); return;
   }
   LS=null; closeLesson();
 }
 document.getElementById("listenBtn").onclick=startListening;
-function closeLesson(){ LS=null; speechSynthesis && speechSynthesis.cancel && speechSynthesis.cancel(); document.getElementById("lesson").hidden=true; document.body.style.overflow=""; document.getElementById("q").className="q"; L=null; render(); }
+function closeLesson(){ LS=null; try{ stopRange(); player.pause(); }catch(e){} speechSynthesis && speechSynthesis.cancel && speechSynthesis.cancel(); document.getElementById("lesson").hidden=true; document.body.style.overflow=""; document.getElementById("q").className="q"; L=null; render(); }
 document.getElementById("quit").onclick=closeLesson;
 document.getElementById("startBtn").onclick=startLesson;
 
