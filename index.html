@@ -635,6 +635,9 @@ document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{lan
 const shuffle=a=>{a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a;};
 const norm=s=>s.toLowerCase().replace(/[’`´]/g,"'").replace(/[.,!?;:"“”¿¡…]/g,"").replace(/\s+/g," ").trim();
 const plain=s=>norm(s).normalize("NFD").replace(/[̀-ͯ]/g,"");
+const EN_CONTR=[[/\bcan't\b/g,"cannot"],[/\bwon't\b/g,"will not"],[/\bshan't\b/g,"shall not"],[/\bain't\b/g,"is not"],[/\blet's\b/g,"let us"],[/\bi'm\b/g,"i am"],[/\b(it|that|there|here|what|who|where|how|he|she)'s\b/g,"$1 is"],[/n't\b/g," not"],[/'re\b/g," are"],[/'ve\b/g," have"],[/'ll\b/g," will"],[/'d\b/g," would"],[/\bcan not\b/g,"cannot"]];
+const expandEn=s=>{EN_CONTR.forEach(([r,t])=>{s=s.replace(r,t);}); return s.replace(/\s+/g," ").trim();};
+const cmpForm=(s,lg)=>lg==="en"?expandEn(plain(s)):plain(s);
 function lev(a,b){const m=[];for(let i=0;i<=b.length;i++)m[i]=[i];for(let j=0;j<=a.length;j++)m[0][j]=j;for(let i=1;i<=b.length;i++)for(let j=1;j<=a.length;j++)m[i][j]=Math.min(m[i-1][j]+1,m[i][j-1]+1,m[i-1][j-1]+(b[i-1]===a[j-1]?0:1));return m[b.length][a.length];}
 const toks=s=>s.split(/\s+/).map(w=>w.replace(/^[¿¡"“]+|[.,!?;:"”]+$/g,"")).filter(Boolean);
 
@@ -828,7 +831,8 @@ function check(){
     const a=L.answer||"";
     if(norm(a)===norm(tg)) ok=true;
     else if(plain(a)===plain(tg)){ok=true; note="Atenção aos acentos.";}
-    else if(lev(plain(a),plain(tg))<=Math.max(1,Math.floor(plain(tg).length*0.06))){ok=true; note="Quase perfeito, confira a grafia.";}
+    else if(cmpForm(a,L.lang)===cmpForm(tg,L.lang)){ok=true;}
+    else if(lev(cmpForm(a,L.lang),cmpForm(tg,L.lang))<=Math.max(1,Math.floor(cmpForm(tg,L.lang).length*0.06))){ok=true; note="Quase perfeito, confira a grafia.";}
   }
   L.checked=true; L.answered++;
   if(ok){ L.ok++; if(ex.type==="speak"&&L.micResult) note=`Você falou ${Math.round(L.micResult.score*100)}% da frase.`;
