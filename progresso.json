@@ -24,7 +24,7 @@
    }
   },
   "computador": {
-   "updatedAt": "2026-11-24T16:37:33.027Z",
+   "updatedAt": "2026-11-24T16:39:00.677Z",
    "done": {
     "en1": 3,
     "it1": 3,
@@ -54,11 +54,14 @@
       "lessons": 2,
       "xp": 220,
       "ok": 22,
-      "total": 28
+      "total": 28,
+      "listen": 5,
+      "listenOk": 4,
+      "listenTotal": 4
      }
     }
    }
   }
  },
- "updatedAt": "2026-11-24T16:37:33.027Z"
+ "updatedAt": "2026-11-24T16:39:00.677Z"
 }
