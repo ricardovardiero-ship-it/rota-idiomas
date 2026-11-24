@@ -163,6 +163,9 @@ textarea:focus{border-color:var(--accent); outline:none}
 .vtest.ghost{background:transparent; border-color:var(--line); color:var(--muted)}
 .chip.done{background:var(--good-soft); color:var(--good); border-color:transparent}
 .script{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:6px; font-size:15px}
+.script .trl{display:block; color:var(--muted); font-size:13px; margin-top:2px}
+.script.notr .trl{display:none}
+.trbtn{align-self:flex-start; background:none; border:1px solid var(--line); border-radius:999px; padding:6px 12px; font:inherit; font-size:13px; color:inherit; cursor:pointer}
 .self{display:grid; grid-template-columns:1fr 1fr; gap:10px}
 .lfoot{position:sticky; bottom:0; border-top:1px solid var(--line); background:var(--surface); padding-left:max(16px, env(safe-area-inset-left,0px)); padding-right:max(16px, env(safe-area-inset-right,0px)); padding-block:14px calc(14px + env(safe-area-inset-bottom,0px))}
 .lfoot.good{background:var(--good-soft); border-color:transparent}
@@ -946,7 +949,7 @@ function startTimer(key,total,elId,btn,onDone){
 function renderDaily(){
   const p=LISTEN[lang][dayIndex()%LISTEN[lang].length], tp=TOPICS[lang][dayIndex()%TOPICS[lang].length];
   document.getElementById("dailyTitle").textContent=lang==="en"?"Listening e conversa em inglês":"Listening e conversa em italiano";
-  document.getElementById("listenName").textContent=`"${p.title}" · áudio de um diálogo com 4 perguntas de compreensão`;
+  document.getElementById("listenName").textContent=`"${p.title}" · diálogo com áudio, texto, tradução e 4 perguntas`;
   document.getElementById("podLinks").innerHTML=PODS[lang].map(([n,u])=>`<a href="${u}" target="_blank" rel="noopener">${n}</a>`).join(" · ");
   document.getElementById("talkTopic").textContent=`${tp[0]}. O Claude faz o papel de ${tp[1]}.`;
   const lm=mins("listen"), tm=mins("talk");
@@ -971,6 +974,10 @@ document.getElementById("podStart").onclick=e=>startTimer("pod",900,"podT",e.cur
 document.getElementById("podDone").onclick=()=>{ if(timers.pod){clearInterval(timers.pod.iv); timers.pod=null;} dayRec(lang).listen=(dayRec(lang).listen||0)+15; document.getElementById("podT").textContent="Feito ✓"; persist(); };
 
 let LS=null;
+const LTR={"len1": ["Sarah: Bom dia, pessoal. Vamos começar com a atualização do fechamento do mês.", "David: Claro. Contas a pagar está quase pronto. Ainda estamos esperando três notas fiscais do nosso principal fornecedor.", "Sarah: Quando você espera recebê-las?", "David: Eles prometeram enviar até amanhã ao meio-dia.", "Sarah: Certo. E a conciliação bancária?", "David: Está pronta. Houve uma pequena diferença de quatrocentos dólares, mas encontrei a causa. Era um pagamento duplicado.", "Sarah: Ótimo achado. Por favor, documente e me mande um resumo curto no Slack.", "David: Pode deixar. Devemos conseguir fechar a contabilidade até quinta-feira."], "len2": ["Recrutadora: Obrigada por entrar na chamada. Pode me contar um pouco sobre a sua trajetória?", "Candidato: Claro. Trabalho com contabilidade e finanças há mais de dez anos, principalmente em empresas do setor imobiliário e do varejo.", "Recrutadora: Por quais tarefas você era responsável?", "Candidato: Eu preparava as demonstrações financeiras, gerenciava o fluxo de caixa e trabalhava junto com os auditores externos.", "Recrutadora: Você já trabalhou com uma equipe em outro fuso horário?", "Candidato: Sim. No meu último projeto, parte da equipe estava em Portugal, então tínhamos que planejar as reuniões com cuidado.", "Recrutadora: Isso ajuda muito nesta vaga. Nossa equipe de finanças fica no Texas.", "Candidato: Isso funciona bem para mim. A diferença de horário com o Brasil é pequena."], "len3": ["Gerente: Vamos olhar o orçado versus realizado do terceiro trimestre.", "Analista: A receita ficou cinco por cento acima do orçamento, principalmente por causa das vendas maiores em setembro.", "Gerente: Boa notícia. E as despesas?", "Analista: As despesas de marketing ficaram doze por cento acima do orçamento. Lançamos uma campanha extra que não estava planejada.", "Gerente: Valeu a pena?", "Analista: Acho que sim. A campanha trouxe cerca de duzentos clientes novos.", "Gerente: Certo. Por favor, acrescente uma nota explicando a variação antes de mandarmos o relatório para o CFO.", "Analista: Sem problema. Deixo pronto até o fim do dia."], "len4": ["Auditor: Oi, aqui é o Mark, da equipe de auditoria. Você tem um minuto?", "Contadora: Claro, Mark. Como posso ajudar?", "Auditor: Estamos revisando o ativo imobilizado e precisamos das notas dos equipamentos comprados em março.", "Contadora: Sem problema. Posso subir na pasta compartilhada hoje à tarde.", "Auditor: Perfeito. Também notamos que dois ativos não têm tabela de depreciação.", "Contadora: Ah, esses foram comprados no fim do ano. Vou preparar a tabela e te mandar até sexta.", "Auditor: Seria ótimo. Obrigado pela ajuda.", "Contadora: De nada. Me avise se precisar de mais alguma coisa."], "len5": ["Gerente: Bem-vindo à equipe! Como está sendo o seu primeiro dia até agora?", "Novo funcionário: Muito bem, obrigado. Já configurei o meu notebook e entrei nos canais do Slack.", "Gerente: Ótimo. Esta semana, quero que você se concentre em aprender o nosso sistema contábil.", "Novo funcionário: Parece bom. Tem alguma documentação que eu possa ler?", "Gerente: Sim, tem um guia no drive compartilhado. Além disso, a Emily vai te mostrar o processo na quarta-feira.", "Novo funcionário: Perfeito. Que horas é a nossa reunião diária?", "Gerente: É às nove e meia, horário Central, toda manhã. Não se preocupe se não puder participar às sextas.", "Novo funcionário: Entendi. Estou ansioso para trabalhar com todos."], "len6": ["RH: Tenho o prazer de dizer que gostaríamos de te oferecer a vaga.", "Candidato: Que notícia maravilhosa. Obrigado!", "RH: A vaga é em tempo integral e totalmente remota. Você seria contratado como prestador de serviço independente.", "Candidato: Entendido. Pode me falar mais sobre a remuneração?", "RH: O valor mensal é de seis mil dólares, pago no fim de cada mês.", "Candidato: Obrigado. Pela minha experiência, eu esperava algo mais perto de sete mil. Existe alguma flexibilidade?", "RH: Vou verificar com o gestor da vaga e te dou um retorno até amanhã.", "Candidato: Agradeço. Estou muito animado com essa oportunidade."], "lit1": ["Barista: Bom dia! O que vai querer?", "Marco: Bom dia. Um café e um croissant, por favor.", "Barista: O croissant simples ou com creme?", "Marco: Com creme, obrigado.", "Barista: Aqui está. São três euros.", "Marco: Posso pagar com cartão?", "Barista: Claro. Tenha um bom dia!", "Marco: Obrigado, para você também!"], "lit2": ["Giulia: Oi! Meu nome é Giulia. E você?", "Ricardo: Oi Giulia, eu sou o Ricardo. Prazer!", "Giulia: O prazer é meu. De onde você é?", "Ricardo: Sou brasileiro, do Rio de Janeiro.", "Giulia: Que legal! Eu sou de Bolonha. Você está aqui de férias?", "Ricardo: Não, quero morar na Itália. Estudo italiano todos os dias.", "Giulia: Muito bem! Você já fala muito bem.", "Ricardo: Obrigado, você é muito gentil."], "lit3": ["Ricardo: Boa tarde. Queria uma passagem para Florença, por favor.", "Atendente: Só ida ou ida e volta?", "Ricardo: Só ida.", "Atendente: O próximo trem sai às dezoito e quinze da plataforma quatro.", "Ricardo: Quanto custa?", "Atendente: Vinte e cinco euros.", "Ricardo: Tudo bem. Quanto tempo dura a viagem?", "Atendente: Cerca de uma hora e meia. Boa viagem!"], "lit4": ["Ricardo: Alô, bom dia. Estou ligando pelo apartamento para alugar.", "Proprietário: Sim, bom dia. Ainda está disponível.", "Ricardo: Quantos quartos tem?", "Proprietário: Tem dois quartos, um banheiro e uma cozinha grande.", "Ricardo: E quanto é o aluguel por mês?", "Proprietário: Oitocentos euros, mais cinquenta de condomínio.", "Ricardo: Posso ver no sábado de manhã?", "Proprietário: Sim, às dez está bom."], "lit5": ["Funcionário: Bom dia, como posso ajudar?", "Ricardo: Bom dia. Sou cidadão português e queria fazer a residência.", "Funcionário: O senhor tem horário marcado?", "Ricardo: Sim, às onze.", "Funcionário: Perfeito. Tem o passaporte e o contrato de aluguel?", "Ricardo: Sim, aqui estão os documentos. Também tenho o codice fiscale.", "Funcionário: Muito bem. Daqui a alguns dias um fiscal vai passar na sua casa para a verificação.", "Ricardo: Combinado, muito obrigado."], "lit6": ["Giulia: Oi Ricardo! O que você fez no fim de semana?", "Ricardo: No sábado fui a Verona com um amigo.", "Giulia: Que legal! O que vocês viram?", "Ricardo: Visitamos a Arena e comemos numa trattoria perto do centro.", "Giulia: E no domingo?", "Ricardo: No domingo fiquei em casa. Estudei italiano e assisti a um filme.", "Giulia: Fez bem em descansar!", "Ricardo: Sim, eu estava cansado depois da viagem."]};
+const TRKEY="rota-listen-tr";
+function trOn(lg){ try{ const v=JSON.parse(localStorage.getItem(TRKEY)||"{}"); if(lg in v) return v[lg]; }catch(e){} return lg==="it"; }
+function setTr(lg,on){ try{ const v=JSON.parse(localStorage.getItem(TRKEY)||"{}"); v[lg]=on; localStorage.setItem(TRKEY,JSON.stringify(v)); }catch(e){} }
 /* inglês: cada diálogo em 2 partes curtas (4 falas) com 2 perguntas logo depois; cut = segundo onde termina a 4ª fala */
 const LSPLIT={
  len1:{cut:16.87,a:[0,1],b:[2,3]},
@@ -982,8 +989,8 @@ const LSPLIT={
 };
 function listenParts(p){
   const sp=LSPLIT[p.id]; const pick=x=>typeof x==="number"?p.q[x]:x;
-  if(!sp) return [{from:0,to:null,lines:p.lines,q:p.q}];
-  return [{from:0,to:sp.cut,lines:p.lines.slice(0,4),q:sp.a.map(pick)},{from:sp.cut,to:null,lines:p.lines.slice(4),q:sp.b.map(pick)}];
+  if(!sp) return [{from:0,to:null,off:0,lines:p.lines,q:p.q}];
+  return [{from:0,to:sp.cut,off:0,lines:p.lines.slice(0,4),q:sp.a.map(pick)},{from:sp.cut,to:null,off:4,lines:p.lines.slice(4),q:sp.b.map(pick)}];
 }
 function stopRange(){ player.ontimeupdate=null; player.onended=null; }
 function playRange(from,to,rate,onDone){
@@ -1006,6 +1013,14 @@ function startListening(){
 }
 function playListen(slow,auto){ const pt=LS.parts[LS.pi]; const me=LS; playRange(pt.from,pt.to,slow?0.8:1, auto?()=>{ if(LS===me&&LS.step==="audio") setTimeout(()=>{ if(LS===me&&LS.step==="audio") listenNext(); },500); }:null); }
 function playAll(){ playRange(0,null,1,null); }
+function scriptBox(lines,off){
+  const s=document.createElement("div"); s.className="script"+(trOn(LS.lang)?"":" notr");
+  const t=LTR[LS.p.id]||[];
+  lines.forEach((l,k)=>{ const p=document.createElement("p"); const i=l.indexOf(":"); p.innerHTML="<b></b> <span></span><span class=\"trl\"></span>"; p.querySelector("b").textContent=l.slice(0,i+1); p.querySelector("span").textContent=l.slice(i+1).trim(); const x=t[off+k]||""; p.querySelector(".trl").textContent=x.slice(x.indexOf(":")+1).trim(); s.appendChild(p); });
+  const b=document.createElement("button"); b.className="trbtn"; const lab=()=>{ b.textContent=s.classList.contains("notr")?"Mostrar tradução":"Esconder tradução"; }; lab();
+  b.onclick=()=>{ s.classList.toggle("notr"); setTr(LS.lang,!s.classList.contains("notr")); lab(); };
+  const w=document.createElement("div"); w.style.display="flex"; w.style.flexDirection="column"; w.style.gap="8px"; w.appendChild(s); w.appendChild(b); return w;
+}
 function renderListen(){
   const q=document.getElementById("q"); q.className="q"; q.innerHTML="";
   document.getElementById("lbar").style.width=((LS.step==="end"?1:LS.done/LS.nq))*100+"%";
@@ -1017,18 +1032,20 @@ function renderListen(){
     w.innerHTML=`<button class="play" aria-label="Ouvir"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg></button><button class="play slow" aria-label="Ouvir devagar">LENTO</button>`;
     const [a,b]=w.querySelectorAll("button"); a.onclick=()=>playListen(false); b.onclick=()=>playListen(true);
     q.appendChild(w);
-    const p=document.createElement("p"); p.style.color="var(--muted)"; p.textContent=multi?`Ouça sem ler. Quando o áudio acabar, as ${part.q.length} perguntas aparecem na hora. O texto aparece no final.`:"Ouça o diálogo sem ler nada. Depois responda 4 perguntas. O texto aparece no final."; q.appendChild(p);
-    setFoot("","", "Ir para as perguntas", true); playListen(false,true);
+    const p=document.createElement("p"); p.style.color="var(--muted)"; p.textContent=`Ouça acompanhando o texto. Pode repetir quantas vezes quiser. Depois vêm ${part.q.length} perguntas, e o texto continua na tela.`; q.appendChild(p);
+    q.appendChild(scriptBox(part.lines,part.off));
+    setFoot("","", "Ir para as perguntas", true); playListen(false,false);
   } else if(LS.step==="q"){
     const [txt,opts]=part.q[LS.qi]; h.textContent=txt; LS.ans=null; LS.checked=false;
     const w=document.createElement("div"); w.className="say";
     w.innerHTML=`<button class="play slow" aria-label="Ouvir de novo">OUVIR</button><button class="play slow" aria-label="Ouvir devagar">LENTO</button>`; const [r1,r2]=w.querySelectorAll("button"); r1.onclick=()=>playListen(false); r2.onclick=()=>playListen(true); q.appendChild(w);
     q.appendChild(optList(opts,v=>{ LS.ans=opts.indexOf(v); document.getElementById("go").disabled=false; }));
+    q.appendChild(scriptBox(part.lines,part.off));
     setFoot("","","Verificar",false);
   } else {
     h.textContent="Listening concluído";
-    const sc=document.createElement("p"); sc.textContent=`Você acertou ${LS.ok} de ${LS.nq}. Leia o texto e ouça mais uma vez acompanhando.`; q.appendChild(sc);
-    const s=document.createElement("div"); s.className="script"; LS.p.lines.forEach(l=>{ const p=document.createElement("p"); const i=l.indexOf(":"); p.innerHTML="<b></b> "; p.querySelector("b").textContent=l.slice(0,i+1); p.append(l.slice(i+1)); s.appendChild(p); }); q.appendChild(s);
+    const sc=document.createElement("p"); sc.textContent=`Você acertou ${LS.ok} de ${LS.nq}. Ouça o diálogo inteiro mais uma vez acompanhando o texto.`; q.appendChild(sc);
+    q.appendChild(scriptBox(LS.p.lines,0));
     const again=document.createElement("button"); again.className="vtest"; again.textContent="Ouvir lendo o texto"; again.onclick=()=>playAll(); q.appendChild(again);
     setFoot("","","Voltar ao início",true);
   }
